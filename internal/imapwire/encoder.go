@@ -156,6 +156,9 @@ func (enc *Encoder) Mailbox(name string) *Encoder {
 }
 
 func (enc *Encoder) SeqSet(seqSet imap.SeqSet) *Encoder {
+	if imap.IsSearchRes(seqSet) {
+		return enc.Special('$')
+	}
 	if len(seqSet) == 0 {
 		enc.setErr(fmt.Errorf("imapwire: cannot encode empty sequence set"))
 		return enc

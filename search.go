@@ -1,6 +1,7 @@
 package imap
 
 import (
+	"reflect"
 	"time"
 )
 
@@ -13,6 +14,7 @@ const (
 	SearchReturnMax   SearchReturnOption = "MAX"
 	SearchReturnAll   SearchReturnOption = "ALL"
 	SearchReturnCount SearchReturnOption = "COUNT"
+	SearchReturnSave  SearchReturnOption = "SAVE" // requires IMAP4rev2 or SEARCHRES
 )
 
 // SearchOptions contains options for the SEARCH command.
@@ -25,8 +27,9 @@ type SearchOptions struct {
 // When multiple fields are populated, the result is the intersection ("and"
 // function) of all messages that match the fields.
 type SearchCriteria struct {
-	SeqNum SeqSet
-	UID    SeqSet
+	SeqNum    SeqSet
+	UID       SeqSet
+	SearchRes bool // requires IMAP4rev2 or SEARCHRES
 
 	// Only the date is used, the time and timezone are ignored
 	Since      time.Time
@@ -68,4 +71,25 @@ func (data *SearchData) AllNums() []uint32 {
 	// Note: a dynamic sequence set would be a server bug
 	nums, _ := data.All.Nums()
 	return nums
+}
+
+// searchRes is a special empty SeqSet which can be used as a marker. It has
+// a non-zero cap so that its data pointer is non-nil and can be compared.
+var (
+	searchRes     = make(SeqSet, 0, 1)
+	searchResAddr = reflect.ValueOf(searchRes).Pointer()
+)
+
+// SearchRes returns a special marker which can be used instead of a SeqSet to
+// reference the last SEARCH result. On the wire, it's encoded as '$'.
+//
+// It requires IMAP4rev2 or the SEARCHRES extension.
+func SearchRes() SeqSet {
+	return searchRes
+}
+
+// IsSearchRes checks whether a sequence set is a reference to the last SEARCH
+// result. See SearchRes.
+func IsSearchRes(seqSet SeqSet) bool {
+	return reflect.ValueOf(seqSet).Pointer() == searchResAddr
 }

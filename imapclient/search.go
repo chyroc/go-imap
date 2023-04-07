@@ -121,6 +121,9 @@ func writeSearchKey(enc *imapwire.Encoder, criteria *imap.SearchCriteria) {
 	if len(criteria.UID) > 0 {
 		encodeItem("UID").SP().SeqSet(criteria.UID)
 	}
+	if criteria.SearchRes {
+		encodeItem("$")
+	}
 
 	if !criteria.Since.IsZero() && !criteria.Before.IsZero() && criteria.Before.Sub(criteria.Since) == 24*time.Hour {
 		encodeItem("ON").SP().String(criteria.Since.Format(internal.DateLayout))
