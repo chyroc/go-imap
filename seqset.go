@@ -317,3 +317,26 @@ func (s SeqSet) search(q uint32) (i int, ok bool) {
 	}
 	return min, s[min].Contains(q)
 }
+
+func intersectSeqSet(a, b SeqSet) SeqSet {
+	// TODO: optimize
+	var out SeqSet
+	for _, seq := range a {
+		for _, other := range b {
+			// TODO: handle '*'
+			if seq.Stop < other.Start || other.Stop > seq.Start {
+				continue // the sequences don't intersect
+			}
+
+			start, stop := seq.Start, seq.Stop
+			if other.Start > start {
+				start = other.Start
+			}
+			if other.Stop < stop {
+				stop = other.Stop
+			}
+			out.AddRange(start, stop)
+		}
+	}
+	return out
+}

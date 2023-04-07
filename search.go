@@ -48,6 +48,82 @@ type SearchCriteria struct {
 	Or  [][2]SearchCriteria
 }
 
+// And intersects two search criteria.
+func (criteria *SearchCriteria) And(other *SearchCriteria) {
+	if criteria.SeqNum != nil && other.SeqNum != nil {
+		criteria.SeqNum = intersectSeqSet(criteria.SeqNum, other.SeqNum)
+	} else if other.SeqNum != nil {
+		criteria.SeqNum = other.SeqNum
+	}
+	if criteria.UID != nil && other.UID != nil {
+		criteria.UID = intersectSeqSet(criteria.UID, other.UID)
+	} else if other.UID != nil {
+		criteria.UID = other.UID
+	}
+
+	criteria.Since = intersectSince(criteria.Since, other.Since)
+	criteria.Before = intersectBefore(criteria.Before, other.Before)
+	criteria.SentSince = intersectSince(criteria.SentSince, other.SentSince)
+	criteria.SentBefore = intersectBefore(criteria.SentBefore, other.SentBefore)
+
+	for _, kv := range other.Header {
+		criteria.Header = append(criteria.Header, kv)
+	}
+	for _, s := range other.Body {
+		criteria.Body = append(criteria.Body, s)
+	}
+	for _, s := range other.Text {
+		criteria.Text = append(criteria.Text, s)
+	}
+
+	for _, flag := range other.Flag {
+		criteria.Flag = append(criteria.Flag, flag)
+	}
+	for _, flag := range other.NotFlag {
+		criteria.NotFlag = append(criteria.NotFlag, flag)
+	}
+
+	if criteria.Larger == 0 || other.Larger > criteria.Larger {
+		criteria.Larger = other.Larger
+	}
+	if criteria.Smaller == 0 || other.Smaller < criteria.Smaller {
+		criteria.Smaller = other.Smaller
+	}
+
+	for _, not := range other.Not {
+		criteria.Not = append(criteria.Not, not)
+	}
+	for _, or := range other.Or {
+		criteria.Or = append(criteria.Or, or)
+	}
+}
+
+func intersectSince(t1, t2 time.Time) time.Time {
+	switch {
+	case t1.IsZero():
+		return t2
+	case t2.IsZero():
+		return t1
+	case t1.After(t2):
+		return t1
+	default:
+		return t2
+	}
+}
+
+func intersectBefore(t1, t2 time.Time) time.Time {
+	switch {
+	case t1.IsZero():
+		return t2
+	case t2.IsZero():
+		return t1
+	case t1.Before(t2):
+		return t1
+	default:
+		return t2
+	}
+}
+
 type SearchCriteriaHeaderField struct {
 	Key, Value string
 }
