@@ -44,7 +44,7 @@ type SearchCriteria struct {
 	Larger  int64
 	Smaller int64
 
-	Not []SearchCriteria
+	Not *SearchCriteria
 	Or  [][2]SearchCriteria
 }
 
@@ -90,8 +90,10 @@ func (criteria *SearchCriteria) And(other *SearchCriteria) {
 		criteria.Smaller = other.Smaller
 	}
 
-	for _, not := range other.Not {
-		criteria.Not = append(criteria.Not, not)
+	if criteria.Not != nil && other.Not != nil {
+		criteria.Not.And(other.Not)
+	} else if other.Not != nil {
+		criteria.Not = other.Not
 	}
 	for _, or := range other.Or {
 		criteria.Or = append(criteria.Or, or)
