@@ -183,7 +183,7 @@ func readSearchKeyWithAtom(criteria *imap.SearchCriteria, dec *imapwire.Decoder,
 		if !dec.ExpectSP() || !dec.ExpectSeqSet(&seqSet) {
 			return dec.Err()
 		}
-		criteria.UID = seqSet // TODO: intersect
+		criteria.And(&imap.SearchCriteria{UID: seqSet})
 	case "ANSWERED", "DELETED", "DRAFT", "FLAGGED", "RECENT", "SEEN":
 		criteria.Flag = append(criteria.Flag, searchKeyFlag(key))
 	case "UNANSWERED", "UNDELETED", "UNDRAFT", "UNFLAGGED", "UNSEEN":
@@ -235,22 +235,24 @@ func readSearchKeyWithAtom(criteria *imap.SearchCriteria, dec *imapwire.Decoder,
 		if err != nil {
 			return err
 		}
+		var dateCriteria imap.SearchCriteria
 		switch key {
 		case "SINCE":
-			criteria.Since = intersectSince(criteria.Since, t)
+			dateCriteria.Since = t
 		case "BEFORE":
-			criteria.Before = intersectBefore(criteria.Before, t)
+			dateCriteria.Before = t
 		case "ON":
-			criteria.Since = intersectSince(criteria.Since, t)
-			criteria.Before = intersectBefore(criteria.Before, t.Add(24*time.Hour))
+			dateCriteria.Since = t
+			dateCriteria.Before = t.Add(24 * time.Hour)
 		case "SENTSINCE":
-			criteria.SentSince = intersectSince(criteria.SentSince, t)
+			dateCriteria.SentSince = t
 		case "SENTBEFORE":
-			criteria.SentBefore = intersectBefore(criteria.SentBefore, t)
+			dateCriteria.SentBefore = t
 		case "SENTON":
-			criteria.SentSince = intersectSince(criteria.SentSince, t)
-			criteria.SentBefore = intersectBefore(criteria.SentBefore, t.Add(24*time.Hour))
+			dateCriteria.SentSince = t
+			dateCriteria.SentBefore = t.Add(24 * time.Hour)
 		}
+		criteria.And(&dateCriteria)
 	case "BODY":
 		var body string
 		if !dec.ExpectSP() || !dec.ExpectAString(&body) {
@@ -270,13 +272,9 @@ func readSearchKeyWithAtom(criteria *imap.SearchCriteria, dec *imapwire.Decoder,
 		}
 		switch key {
 		case "LARGER":
-			if criteria.Larger == 0 || n > criteria.Larger {
-				criteria.Larger = n
-			}
+			criteria.And(&imap.SearchCriteria{Larger: n})
 		case "SMALLER":
-			if criteria.Smaller == 0 || n < criteria.Smaller {
-				criteria.Smaller = n
-			}
+			criteria.And(&imap.SearchCriteria{Smaller: n})
 		}
 	case "NOT":
 		if !dec.ExpectSP() {
@@ -307,37 +305,11 @@ func readSearchKeyWithAtom(criteria *imap.SearchCriteria, dec *imapwire.Decoder,
 		if err != nil {
 			return err
 		}
-		criteria.SeqNum = seqSet // TODO: intersect
+		criteria.And(&imap.SearchCriteria{SeqNum: seqSet})
 	}
 	return nil
 }
 
 func searchKeyFlag(key string) imap.Flag {
 	return imap.Flag("\\" + strings.Title(strings.ToLower(key)))
-}
-
-func intersectSince(t1, t2 time.Time) time.Time {
-	switch {
-	case t1.IsZero():
-		return t2
-	case t2.IsZero():
-		return t1
-	case t1.After(t2):
-		return t1
-	default:
-		return t2
-	}
-}
-
-func intersectBefore(t1, t2 time.Time) time.Time {
-	switch {
-	case t1.IsZero():
-		return t2
-	case t2.IsZero():
-		return t1
-	case t1.Before(t2):
-		return t1
-	default:
-		return t2
-	}
 }
